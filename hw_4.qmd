@@ -1,0 +1,138 @@
+---
+title: "hw_4"
+author: "Xiaoqi Ma"
+format: html
+editor: visual
+execute: 
+  error: true
+  message: false
+  warning: false
+  embed_resources: true
+---
+
+```{r}
+library(Lahman)
+library(dplyr)
+library(tidyverse)
+library(here)
+library(janitor)
+library(rio)
+library(readxl)
+library(haven)
+```
+
+Part 1
+
+Q1.The subset of data
+
+```{r}
+head(Teams)
+?Teams
+Teams.new <- Teams %>%
+  filter(teamID=="ATL"&yearID >=1980) %>%
+  select(name, yearID, W, L, R, RA)
+Teams.new
+```
+
+Q2.The winning percentage
+
+```{r}
+Teams.new <- mutate(Teams.new, wpct = W/(W+L))
+Teams.a <- arrange(Teams.new,wpct)
+Teams.d <- arrange(Teams.new,desc(wpct))
+mean(Teams.new$wpct)
+sd(Teams.new$wpct)
+```
+
+Q3.Mean and SD of winning percentage for each team and order
+
+```{r}
+Teams <- mutate(Teams, wpct = W/(W+L)) %>%
+  arrange(wpct)
+Teams.3 <- Teams %>% 
+  group_by(name) %>%
+  summarize(mean_wpct=mean(wpct),sd_wpct=sd(wpct)) 
+head(Teams.3)
+
+
+```
+
+Q4.Plot
+
+```{r}
+Teams %>%
+  filter(name=="Detroit Tigers"|name=="New York Yankees"|name=="San Diego Padres")%>%
+  ggplot(aes(yearID,wpct,color = factor(name)))+geom_line() +
+  labs(x="year_id",y="w_pct",color="Team")
+
+```
+
+Part 2 Q1. Read the data
+
+```{r}
+star <- read_csv(here("data", "star.csv"),show_col_types = FALSE)%>%
+  clean_names()
+sesame13 <- import(here("data", "sesame13.sav")) %>% 
+  as_tibble()%>%
+  clean_names()
+?readxl
+ais <- read_excel(here("data", "ais.xlsx"),skip=15)%>%
+  clean_names()
+head(ais)
+```
+
+Q2. Compute average rcc and bmi by sport and save as SPSS and EXCEL files
+
+```{r}
+ais.rcc.bmi <- ais %>% 
+  group_by(sport) %>%
+  summarize(mean_rcc=mean(rcc),mean_bmi=mean(bmi)) 
+head(ais.rcc.bmi)
+write_sav(ais.rcc.bmi,"ais.rcc.bmi.sav")
+write_xlsx(ais.rcc.bmi,"ais.rcc.bmi.xlsx")
+```
+
+Q3.
+
+```{r}
+head(sesame13)
+ave.fem.age <- sesame13 %>% filter(sex==2) %>% group_by(setting) %>% summarize(mean_age=mean(age))
+ave.fem.age
+```
+
+The average female age is higher at school.
+
+Q4.
+
+```{r}
+summarize(star,r=nrow(star),c=ncol(star))
+star.new <- star %>% filter(tmathss<mean(tmathss)+3*sd(tmathss)& tmathss>mean(tmathss)-3*sd(tmathss))
+summarize(star.new,r.new=nrow(star.new),c.new=ncol(star.new))
+```
+
+Originally there were 5748 rows. After removing the outliers, there are 5743 rows.
+
+Q5.
+
+```{r}
+mr.st <- star %>%
+  summarize(tmathss_z=(tmathss-mean(tmathss))/sd(tmathss),
+            treadss_z=(treadss-mean(treadss))/sd(treadss))
+head(mr.st)
+
+#Check the standardized scores
+mr.st %>% summarize(mean_m_z=mean(tmathss_z),sd_m_z=sd(tmathss_z),mean_r_z=mean(treadss_z),sd_r_z=sd(treadss_z))
+
+#Mean of the standardized variable for all sex/frl combinations
+star.st <- star %>%
+  mutate(tmathss_z=(tmathss-mean(tmathss))/sd(tmathss),
+         treadss_z=(treadss-mean(treadss))/sd(treadss))
+head(star.st)
+star.sf <- star.st %>%
+  group_by(sex,frl) %>%
+  summarize(mean_m_z=mean(tmathss_z),mean_r_z=mean(treadss_z))
+star.sf
+
+```
+
+Girls have higher average math and reading performance when free lunch status is controlled. Students receiving free lunch have lower average math and reading performance than those who do not receive free lunch when sex is controlled. The patterns seem to be consistent across groups, indicating that might not be an interaction. Further investigation would be helpful.
